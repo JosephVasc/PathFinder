@@ -1,7 +1,8 @@
 import React, {Component} from 'react';
 import Node from './Node/Node';
 import {dijkstra, getNodesInShortestPathOrder} from '../Algorithm/dijkstra';
-import {astar, getNodes} from '../Algorithm/astar';
+import {astar, getNodesInShortestPathOrderAstar} from "../Algorithm/astar";
+import {breadthFirstSearch, getNodesInShortestPathOrderBFS} from "../Algorithm/bfs";
 
 import './PathFinder.css';
 
@@ -55,6 +56,37 @@ export default class PathFinder extends Component {
     }
   }
 
+  animateAlgorithm = (visitedNodesInOrder, nodesInShortestPathOrder) => {
+    let newGrid = this.state.grid.slice();
+    for (let row of newGrid) {
+      for (let node of row) {
+        let newNode = {
+          ...node,
+          isVisited: false,
+        };
+        newGrid[node.row][node.col] = newNode;
+      }
+    }
+    this.setState({ grid: newGrid });
+    for (let i = 1; i <= visitedNodesInOrder.length; i++) {
+      let node = visitedNodesInOrder[i];
+      if (i === visitedNodesInOrder.length) {
+        setTimeout(() => {
+          this.animateShortestPath(
+            nodesInShortestPathOrder,
+            visitedNodesInOrder
+          );
+        }, i * this.state.speed);
+        return;
+      }
+      setTimeout(() => {
+        //visited node
+        document.getElementById(`node-${node.row}-${node.col}`).className =
+          "node node-visited";
+      }, i * this.state.speed);
+    }
+  };
+
   animateShortestPath(nodesInShortestPathOrder) {
     for (let i = 0; i < nodesInShortestPathOrder.length; i++) {
       setTimeout(() => {
@@ -79,12 +111,33 @@ export default class PathFinder extends Component {
     const startNode = grid[START_NODE_ROW][START_NODE_COL];
     const finishNode = grid[FINISH_NODE_ROW][FINISH_NODE_COL];
     const visitedNodesInOrder = astar(grid, startNode, finishNode);
-    const nodesInShortestPathOrder = getNodes(finishNode);
+    const nodesInShortestPathOrder = getNodesInShortestPathOrderAstar(finishNode);
     this.animateDijkstra(visitedNodesInOrder, nodesInShortestPathOrder);
   }
 
    refreshPage() {
     window.location.reload(false);
+  }
+
+  visualizeBFS() {
+    if (this.state.visualizingAlgorithm || this.state.generatingMaze) {
+      return;
+    }
+    this.setState({ visualizingAlgorithm: true });
+    setTimeout(() => {
+      const { grid } = this.state;
+      const startNode = grid[START_NODE_ROW][START_NODE_COL];
+      const finishNode = grid[FINISH_NODE_ROW][FINISH_NODE_COL];
+      const visitedNodesInOrder = breadthFirstSearch(
+        grid,
+        startNode,
+        finishNode
+      );
+      const nodesInShortestPathOrder = getNodesInShortestPathOrderBFS(
+        finishNode
+      );
+      this.animateAlgorithm(visitedNodesInOrder, nodesInShortestPathOrder);
+    }, this.state.speed);
   }
 
   render() {
@@ -98,10 +151,7 @@ export default class PathFinder extends Component {
         <button onClick={() => this.visualizeAstar()}>
           Visualize A*
         </button>
-        <button onClick={() => this.visualizeDijkstra()}>
-          Visualize DFS 
-        </button>
-        <button onClick={() => this.visualizeDijkstra()}>
+        <button onClick={() => this.visualizeBFS()}>
           Visualize BFS
         </button>
         <button onClick={() => this.refreshPage()}>

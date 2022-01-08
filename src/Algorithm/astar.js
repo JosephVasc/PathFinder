@@ -1,62 +1,74 @@
 export function astar(grid, startNode, finishNode) {
-    const visitedNodesInOrder = [];
-    startNode.distance = 0;
-    const unvisitedNodes = getAllNodes(grid);
-    while (!!unvisitedNodes.length) {
-      sortNodesByDistance(unvisitedNodes);
-      const closestNode = unvisitedNodes.shift();
-      // If we encounter a wall, we skip it.
-      if (closestNode.isWall) continue;
-      // If the closest node is at a distance of infinity,
-      // we must be trapped and should therefore stop.
-      if (closestNode.distance === Infinity) return visitedNodesInOrder;
-      closestNode.isVisited = true;
-      visitedNodesInOrder.push(closestNode);
-      if (closestNode === finishNode) return visitedNodesInOrder;
-      updateUnvisitedNeighbors(closestNode, grid);
-    }
+  if (!startNode || !finishNode || startNode === finishNode) {
+    return false;
   }
-  
-  function sortNodesByDistance(unvisitedNodes) {
-    unvisitedNodes.sort((nodeA, nodeB) => nodeA.distance - nodeB.distance);
-  }
-  
-  function updateUnvisitedNeighbors(node, grid) {
-    const unvisitedNeighbors = getUnvisitedNeighbors(node, grid);
-    for (const neighbor of unvisitedNeighbors) {
-      neighbor.distance = node.distance + 1;
-      neighbor.previousNode = node;
-    }
-  }
-  
-  function getUnvisitedNeighbors(node, grid) {
-    const neighbors = [];
-    const {col, row} = node;
-    if (row > 0) neighbors.push(grid[row - 1][col]);
-    if (row < grid.length - 1) neighbors.push(grid[row + 1][col]);
-    if (col > 0) neighbors.push(grid[row][col - 1]);
-    if (col < grid[0].length - 1) neighbors.push(grid[row][col + 1]);
-    return neighbors.filter(neighbor => !neighbor.isVisited);
-  }
-  
-  function getAllNodes(grid) {
-    const nodes = [];
-    for (const row of grid) {
-      for (const node of row) {
-        nodes.push(node);
+  let unvisitedNodes = []; //open list
+  let visitedNodesInOrder = []; //closed list
+  startNode.distance = 0;
+  unvisitedNodes.push(startNode);
+
+  while (unvisitedNodes.length !== 0) {
+    unvisitedNodes.sort((a, b) => a.totalDistance - b.totalDistance);
+    let closestNode = unvisitedNodes.shift();
+    if (closestNode === finishNode) return visitedNodesInOrder;
+
+    closestNode.isVisited = true;
+    visitedNodesInOrder.push(closestNode);
+
+    let neighbours = getNeighbours(closestNode, grid);
+    for (let neighbour of neighbours) {
+      let distance = closestNode.distance + 1;
+      //f(n) = g(n) + h(n)
+      if (neighbourNotInUnvisitedNodes(neighbour, unvisitedNodes)) {
+        unvisitedNodes.unshift(neighbour);
+        neighbour.distance = distance;
+        neighbour.totalDistance =
+          distance + manhattenDistance(neighbour, finishNode);
+        neighbour.previousNode = closestNode;
+      } else if (distance < neighbour.distance) {
+        neighbour.distance = distance;
+        neighbour.totalDistance =
+          distance + manhattenDistance(neighbour, finishNode);
+        neighbour.previousNode = closestNode;
       }
     }
-    return nodes;
   }
-  
-  // Backtracks from the finishNode to find the shortest path.
-  // Only works when called *after* the astar method above.
-  export function getNodes(finishNode) {
-    const nodesInShortestPathOrder = [];
-    let currentNode = finishNode;
-    while (currentNode !== null) {
-      nodesInShortestPathOrder.unshift(currentNode);
-      currentNode = currentNode.previousNode;
+  return visitedNodesInOrder;
+}
+
+function getNeighbours(node, grid) {
+  let neighbours = [];
+  let { row, col } = node;
+  if (col !== grid[0].length - 1) neighbours.push(grid[row][col + 1]);
+  if (row !== grid.length - 1) neighbours.push(grid[row + 1][col]);
+  if (col !== 0) neighbours.push(grid[row][col - 1]);
+  if (row !== 0) neighbours.push(grid[row - 1][col]);
+  return neighbours.filter(
+    (neighbour) => !neighbour.isWall && !neighbour.isVisited
+  );
+}
+
+function neighbourNotInUnvisitedNodes(neighbour, unvisitedNodes) {
+  for (let node of unvisitedNodes) {
+    if (node.row === neighbour.row && node.col === neighbour.col) {
+      return false;
     }
-    return nodesInShortestPathOrder;
   }
+  return true;
+}
+
+function manhattenDistance(node, finishNode) {
+  let x = Math.abs(node.row - finishNode.row);
+  let y = Math.abs(node.col - finishNode.col);
+  return x + y;
+}
+
+export function getNodesInShortestPathOrderAstar(finishNode) {
+  let nodesInShortestPathOrder = [];
+  let currentNode = finishNode;
+  while (currentNode !== null) {
+    nodesInShortestPathOrder.unshift(currentNode);
+    currentNode = currentNode.previousNode;
+  }
+  return nodesInShortestPathOrder;
+}
